@@ -60,17 +60,6 @@ OTA (after the first USB flash): uncomment the `upload_protocol = espota`
 block in `platformio.ini`, set the device IP, then `pio run -t upload`.
 OTA password: `fan-ota-2024` (see `Config.h`).
 
-### Toolchain notes
-
-* Uses the **pioarduino** platform `53.03.13` (Arduino core 3.1.3).
-* **HomeSpan is pinned to `2.1.2`** — it is the last release that supports
-  core < 3.3.0. Newer pioarduino releases (55.x) that ship core ≥ 3.3.0 use
-  `.tar.xz` packages and require a Python built with LZMA support.
-* Partition table `min_spiffs.csv` (1.9 MB app ×2, **OTA kept**) — the default
-  1.25 MB app slot is too small for HomeSpan + ArduinoHA + WiFi.
-* If `pio` reports *"Python's lzma module is unavailable"*, install xz:
-  `brew install xz` (provides the `liblzma` the bundled Python links against).
-
 ## Provisioning — captive portal
 
 On first boot (or after a factory reset) the device has no WiFi credentials
@@ -90,14 +79,6 @@ The captured WiFi credentials are handed to HomeSpan via
 its own setup AP. The portal lives in `ConfigPortal` and HomeSpan/ArduinoHA are
 not started while it is active.
 
-### Note on the spec's BLE onboarding
-
-The spec asks for **BLE onboarding through Apple Home**. HomeSpan implements
-HAP over **WiFi/IP only** (no BLE/WAC transport), so true Apple-BLE
-provisioning isn't possible with the mandated library. The captive portal is
-the functional replacement and additionally configures the device name and
-MQTT broker, which Apple's BLE onboarding could not.
-
 ## Home Assistant / MQTT broker
 
 The broker host, port, **username and password** are set in the captive portal
@@ -111,12 +92,6 @@ monitor (115200):
 
 Username/password are optional — leave them blank (portal) or omit them
 (`@M`) for an anonymous broker connection.
-
-* **Use an IP address, not a `.local` name.** The ESP32 lwIP resolver does not
-  do mDNS, so `broker.local` (the placeholder default) always fails DNS.
-* ArduinoHA runs in its own FreeRTOS task, so an unreachable broker can never
-  stall HomeKit/WiFi — the fan and HomeKit keep working regardless. Discovery
-  is published automatically once the broker connects.
 
 ## Factory reset
 
