@@ -1,6 +1,11 @@
+#include <WiFi.h>
 #include "HomeSpan.h"
 #include "HomeKitManager.h"
 #include "FanController.h"
+#include "SettingsManager.h"
+
+// Settings pointer for the serial broker-config command (set in begin()).
+static SettingsManager* s_settings = nullptr;
 
 // ---------------------------------------------------------------------------
 // HomeSpan Fan service.
@@ -37,25 +42,53 @@ struct DEV_Fan : Service::Fan {
 };
 
 // ---- HomeSpan logging callbacks ------------------------------------------
-static void onWifiConnect() {
+static void onWifiConnect(int /*connectCount*/) {
   Serial.println(F("WiFi Connected"));
+  // Disable modem power-save: a common source of dropped connections /
+  // phantom "connected, IP 0.0.0.0" states on the ESP32-C3.
+  WiFi.setSleep(WIFI_PS_NONE);
 }
 
 static void onPairChange(boolean isPaired) {
   Serial.println(isPaired ? F("HomeKit Paired") : F("HomeKit Reset"));
 }
 
+// Serial command: "@M <host> [port]" -> store MQTT broker in NVS and reboot.
+static void cmdSetMqtt(const char* buf) {
+  if (!s_settings) return;
+  char host[64] = {0};
+  unsigned int port = DEFAULT_MQTT_PORT;
+  // buf starts with the command letter ('M'); parse what follows.
+  if (sscanf(buf + 1, "%63s %u", host, &port) < 1 || host[0] == 0) {
+    Serial.println(F("Usage: @M <broker-ip-or-host> [port]"));
+    return;
+  }
+  s_settings->setMqttHost(String(host));
+  s_settings->setMqttPort((uint16_t)port);
+  Serial.printf("MQTT broker set to %s:%u - rebooting\n", host, port);
+  delay(200);
+  ESP.restart();
+}
+
 // ---- HomeKitManager -------------------------------------------------------
-void HomeKitManager::begin(const String& deviceName, FanController* fan) {
+void HomeKitManager::begin(const String& deviceName, FanController* fan,
+                           SettingsManager* settings) {
+  s_settings = settings;
   homeSpan.setLogLevel(0);
   homeSpan.setPairingCode(HOMEKIT_SETUP_CODE);
   homeSpan.setQRID(HOMEKIT_SETUP_ID);
   homeSpan.enableOTA(OTA_PASSWORD);          // OTA over WiFi, password protected
-  homeSpan.setWifiCallback(onWifiConnect);
+  homeSpan.setConnectionCallback(onWifiConnect);
   homeSpan.setPairCallback(onPairChange);
 
-  // HomeSpan owns WiFi: if no credentials are stored it starts its built-in
-  // provisioning Access Point so the user can supply WiFi settings.
+  // Feed HomeSpan the credentials captured by the captive portal so it
+  // connects directly and never runs its own WiFi setup AP. (This boot only
+  // happens once WiFi is configured; see main.cpp / ConfigPortal.)
+  String ssid = settings->getWifiSsid();
+  if (ssid.length()) {
+    homeSpan.setWifiCredentials(ssid.c_str(), settings->getWifiPassword().c_str());
+  }
+
   homeSpan.begin(Category::Fans, deviceName.c_str());
 
   new SpanAccessory();
@@ -66,6 +99,9 @@ void HomeKitManager::begin(const String& deviceName, FanController* fan) {
       new Characteristic::Model("ESP32-C3 Fan");
       new Characteristic::FirmwareRevision(FW_VERSION);
     _dev = new DEV_Fan(fan);
+
+  // Serial CLI extension to (re)configure the MQTT broker without reflashing.
+  new SpanUserCommand('M', "<host> [port] - set MQTT broker & reboot", cmdSetMqtt);
 }
 
 void HomeKitManager::loop() {

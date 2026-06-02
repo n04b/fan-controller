@@ -3,6 +3,7 @@
 #include "Config.h"
 
 class FanController;
+class SettingsManager;
 class DEV_Fan;   // internal HomeSpan service (defined in .cpp)
 
 // ---------------------------------------------------------------------------
@@ -10,17 +11,17 @@ class DEV_Fan;   // internal HomeSpan service (defined in .cpp)
 //
 //   * Accessory category: Fan
 //   * Characteristics: Active (on/off), RotationSpeed (0..100%)
-//   * HomeSpan also owns WiFi management + WiFi provisioning (its built-in
-//     setup Access Point when no credentials are stored) and OTA.
+//   * HomeSpan manages the WiFi connection (using credentials captured by the
+//     captive portal and passed in via homeSpan.setWifiCredentials) and OTA.
 //
 // NOTE on provisioning: the spec asks for BLE onboarding through Apple Home.
 // HomeSpan implements HAP over WiFi/IP only and has no BLE/WAC transport, so
-// HomeSpan's native WiFi provisioning is used instead. This is the closest
-// functional equivalent achievable with the mandated library.
+// onboarding is handled by the ConfigPortal captive portal instead. HomeSpan
+// never runs its own setup AP because credentials are supplied up front.
 // ---------------------------------------------------------------------------
 class HomeKitManager {
 public:
-  void begin(const String& deviceName, FanController* fan);
+  void begin(const String& deviceName, FanController* fan, SettingsManager* settings);
   void loop();
 
   // Reflect an external state change (button / MQTT) into HomeKit.

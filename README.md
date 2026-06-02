@@ -27,8 +27,9 @@ a physical button, OTA updates and NVS persistence.
 | `RelayController`   | Relay drive + break-before-make timing |
 | `FanController`     | State machine — single source of truth |
 | `ButtonManager`     | OneButton (short = cycle, long >10 s = factory reset) |
-| `HomeKitManager`    | HomeSpan (HomeKit + WiFi provisioning + OTA) |
+| `HomeKitManager`    | HomeSpan (HomeKit + OTA), connects with portal creds |
 | `MQTTManager`       | ArduinoHA (Home Assistant MQTT Discovery) |
+| `ConfigPortal`      | First-run captive portal (WiFi / name / MQTT) |
 | `main.cpp`          | Wiring + non-blocking loop |
 
 ## Behaviour
@@ -67,19 +68,47 @@ OTA password: `fan-ota-2024` (see `Config.h`).
 * If `pio` reports *"Python's lzma module is unavailable"*, install xz:
   `brew install xz` (provides the `liblzma` the bundled Python links against).
 
-## Provisioning (deviation from the spec)
+## Provisioning — captive portal
 
-The spec asks for **BLE onboarding through Apple Home**. HomeSpan — the
-mandated HomeKit library — implements HAP over **WiFi/IP only** and has no
-BLE/WAC transport, so true Apple-BLE provisioning is not possible with it.
-Instead, HomeSpan's **built-in WiFi provisioning** is used:
+On first boot (or after a factory reset) the device has no WiFi credentials
+and starts a **configuration captive portal**:
 
-1. On first boot (no WiFi stored) HomeSpan starts its setup Access Point.
-2. Connect to it and enter your WiFi credentials.
-3. Add the accessory in Apple Home using setup code **`466-37-726`**.
+1. Join the WiFi network **`Fan-Controller-XXXX`** (open, no password).
+2. Your phone/laptop auto-opens the setup page (or browse to
+   `http://192.168.4.1`). The page lets you set:
+   * WiFi network + password (with a live scan list),
+   * device name,
+   * MQTT broker IP + port.
+3. Save → the device reboots and connects to your WiFi.
+4. Add the accessory in Apple Home using setup code **`466-37-726`**.
 
-The provisioning step is isolated in `HomeKitManager`, so a dedicated BLE
-provisioning module could be swapped in later without touching the rest.
+The captured WiFi credentials are handed to HomeSpan via
+`homeSpan.setWifiCredentials()`, so HomeSpan connects directly and never runs
+its own setup AP. The portal lives in `ConfigPortal` and HomeSpan/ArduinoHA are
+not started while it is active.
+
+### Note on the spec's BLE onboarding
+
+The spec asks for **BLE onboarding through Apple Home**. HomeSpan implements
+HAP over **WiFi/IP only** (no BLE/WAC transport), so true Apple-BLE
+provisioning isn't possible with the mandated library. The captive portal is
+the functional replacement and additionally configures the device name and
+MQTT broker, which Apple's BLE onboarding could not.
+
+## Home Assistant / MQTT broker
+
+The broker is set in the captive portal during setup. To change it later
+without re-provisioning, use the serial monitor (115200):
+
+```
+@M 192.168.0.10 1883
+```
+
+* **Use an IP address, not a `.local` name.** The ESP32 lwIP resolver does not
+  do mDNS, so `broker.local` (the placeholder default) always fails DNS.
+* ArduinoHA runs in its own FreeRTOS task, so an unreachable broker can never
+  stall HomeKit/WiFi — the fan and HomeKit keep working regardless. Discovery
+  is published automatically once the broker connects.
 
 ## Factory reset
 

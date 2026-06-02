@@ -41,6 +41,26 @@ void SettingsManager::setMqttPort(uint16_t port) {
   _prefs.putUShort("mqtt_port", port);
 }
 
+String SettingsManager::getWifiSsid() {
+  return _prefs.getString("wifi_ssid", "");
+}
+
+void SettingsManager::setWifiSsid(const String& ssid) {
+  _prefs.putString("wifi_ssid", ssid);
+}
+
+String SettingsManager::getWifiPassword() {
+  return _prefs.getString("wifi_pass", "");
+}
+
+void SettingsManager::setWifiPassword(const String& pass) {
+  _prefs.putString("wifi_pass", pass);
+}
+
+bool SettingsManager::hasWifiConfigured() {
+  return getWifiSsid().length() > 0;
+}
+
 void SettingsManager::factoryReset() {
   _prefs.clear();   // erase all keys in this namespace
 }

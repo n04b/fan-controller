@@ -30,6 +30,16 @@ public:
   uint16_t getMqttPort();
   void     setMqttPort(uint16_t port);
 
+  String   getWifiSsid();
+  void     setWifiSsid(const String& ssid);
+
+  String   getWifiPassword();
+  void     setWifiPassword(const String& pass);
+
+  // True once WiFi has been provisioned (SSID stored). When false the
+  // device boots into the configuration captive portal.
+  bool     hasWifiConfigured();
+
   // Wipe the whole namespace (used by long-press factory reset).
   void     factoryReset();
 
