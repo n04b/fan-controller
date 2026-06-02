@@ -30,6 +30,12 @@ public:
   uint16_t getMqttPort();
   void     setMqttPort(uint16_t port);
 
+  String   getMqttUser();
+  void     setMqttUser(const String& user);
+
+  String   getMqttPassword();
+  void     setMqttPassword(const String& pass);
+
   String   getWifiSsid();
   void     setWifiSsid(const String& ssid);
 

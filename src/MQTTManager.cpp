@@ -4,11 +4,14 @@
 MQTTManager* MQTTManager::_self = nullptr;
 
 void MQTTManager::begin(const String& host, uint16_t port,
+                        const String& user, const String& pass,
                         const String& deviceName, FanController* fan) {
   _self = this;
   _ctrl = fan;
   _host = host;
   _port = port;
+  _user = user;
+  _pass = pass;
 
   // Bound how long a connect to a down/unreachable broker can block the task.
   _net.setConnectionTimeout(2000);   // ms
@@ -75,7 +78,10 @@ void MQTTManager::taskLoop() {
 
       if (_haveTarget) {
         if (!_started) {
-          _mqtt.begin(_target, _port);
+          // Empty user/pass -> anonymous connection (nullptr).
+          const char* u = _user.length() ? _user.c_str() : nullptr;
+          const char* p = _pass.length() ? _pass.c_str() : nullptr;
+          _mqtt.begin(_target, _port, u, p);
           _started = true;
         }
         _mqtt.loop();

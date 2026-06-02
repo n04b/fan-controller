@@ -92,8 +92,15 @@ void ConfigPortal::handleRoot() {
           "placeholder='192.168.0.10'></div>";
   html += "<div><label>Port</label><input name='port' type='number' value='" +
           String(_settings->getMqttPort()) + "'></div></div>";
+
+  html += "<div class='row'><div><label>MQTT username</label>"
+          "<input name='mqtt_user' value='" + _settings->getMqttUser() + "' "
+          "autocomplete='off' placeholder='optional'></div>";
+  html += "<div><label>MQTT password</label>"
+          "<input name='mqtt_pass' type='password' placeholder='optional'></div></div>";
   html += "<p class='hint'>Use the broker's IP address, not a .local name. "
-          "Leave as-is if you don't use Home Assistant.</p>";
+          "Leave MQTT fields blank if you don't use Home Assistant or your "
+          "broker allows anonymous access.</p>";
 
   html += "<button type='submit'>Save &amp; restart</button></form>";
   html += FPSTR(PAGE_SCRIPT);
@@ -122,6 +129,8 @@ void ConfigPortal::handleSave() {
   String name = _server.arg("name");
   String host = _server.arg("host");
   String port = _server.arg("port");
+  String mqttUser = _server.arg("mqtt_user");
+  String mqttPass = _server.arg("mqtt_pass");
 
   if (ssid.length() == 0) {
     _server.send(400, "text/html",
@@ -138,6 +147,8 @@ void ConfigPortal::handleSave() {
     uint32_t p = port.toInt();
     if (p > 0 && p <= 65535) _settings->setMqttPort((uint16_t)p);
   }
+  _settings->setMqttUser(mqttUser);
+  _settings->setMqttPassword(mqttPass);
 
   Serial.printf("Portal: saved WiFi '%s', rebooting\n", ssid.c_str());
 

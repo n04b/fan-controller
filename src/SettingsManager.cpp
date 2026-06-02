@@ -41,6 +41,22 @@ void SettingsManager::setMqttPort(uint16_t port) {
   _prefs.putUShort("mqtt_port", port);
 }
 
+String SettingsManager::getMqttUser() {
+  return _prefs.getString("mqtt_user", "");
+}
+
+void SettingsManager::setMqttUser(const String& user) {
+  _prefs.putString("mqtt_user", user);
+}
+
+String SettingsManager::getMqttPassword() {
+  return _prefs.getString("mqtt_pass", "");
+}
+
+void SettingsManager::setMqttPassword(const String& pass) {
+  _prefs.putString("mqtt_pass", pass);
+}
+
 String SettingsManager::getWifiSsid() {
   return _prefs.getString("wifi_ssid", "");
 }

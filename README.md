@@ -14,6 +14,9 @@ a physical button, OTA updates and NVS persistence.
 | User button  | GPIO6 |
 
 * Relays are **active LOW**, only one ever energized at a time.
+* Speed requests are **debounced** (150 ms): the running speed is held until a
+  new request settles, so command bursts (slider drags, fast taps) cause one
+  transition instead of contact chatter.
 * Speed changes are **break-before-make**: all relays off → 200 ms → target on
   (non-blocking, handled in `RelayController`).
 * Button: `GPIO6 — button — GND`, `INPUT_PULLUP`.
@@ -97,12 +100,17 @@ MQTT broker, which Apple's BLE onboarding could not.
 
 ## Home Assistant / MQTT broker
 
-The broker is set in the captive portal during setup. To change it later
-without re-provisioning, use the serial monitor (115200):
+The broker host, port, **username and password** are set in the captive portal
+during setup. To change them later without re-provisioning, use the serial
+monitor (115200):
 
 ```
-@M 192.168.0.10 1883
+@M <host> [port] [user] [pass]
+@M 192.168.0.10 1883 fanuser s3cret
 ```
+
+Username/password are optional — leave them blank (portal) or omit them
+(`@M`) for an anonymous broker connection.
 
 * **Use an IP address, not a `.local` name.** The ESP32 lwIP resolver does not
   do mDNS, so `broker.local` (the placeholder default) always fails DNS.

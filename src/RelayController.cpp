@@ -5,9 +5,10 @@ void RelayController::begin() {
   pinMode(PIN_RELAY_MEDIUM, OUTPUT);
   pinMode(PIN_RELAY_HIGH, OUTPUT);
   allOff();
-  _target = LEVEL_OFF;
-  _active = LEVEL_OFF;
-  _waiting = false;
+  _state     = IDLE;
+  _active    = LEVEL_OFF;
+  _requested = LEVEL_OFF;
+  _committed = LEVEL_OFF;
 }
 
 int RelayController::pinForLevel(uint8_t level) {
@@ -27,30 +28,42 @@ void RelayController::allOff() {
 
 void RelayController::setLevel(uint8_t level) {
   if (level > LEVEL_HIGH) level = LEVEL_OFF;
-  if (level == _target && level == _active && !_waiting) return;  // no change
 
-  _target = level;
+  // Re-requesting the value we're already debouncing: don't restart the timer.
+  if (_state == PENDING && level == _requested) return;
 
-  // Always de-energize everything first (break-before-make).
-  allOff();
-  _active = LEVEL_OFF;
-
-  if (level == LEVEL_OFF) {
-    _waiting = false;             // nothing more to do
-  } else {
-    _waiting = true;              // wait the dead time, then energize target
-    _waitStart = millis();
-  }
+  _requested = level;
+  _requestAt = millis();
+  _state = PENDING;   // current speed keeps running until the request settles
 }
 
 void RelayController::loop() {
-  if (!_waiting) return;
-  if (millis() - _waitStart < RELAY_SWITCH_DELAY_MS) return;
+  switch (_state) {
+    case PENDING:
+      if (millis() - _requestAt < RELAY_DEBOUNCE_MS) return;
+      if (_requested == _active) {
+        _state = IDLE;            // settled back to current speed; no change
+      } else {
+        allOff();                 // break before make
+        _active = LEVEL_OFF;
+        _committed = _requested;
+        _deadAt = millis();
+        _state = DEADTIME;
+      }
+      break;
 
-  int pin = pinForLevel(_target);
-  if (pin >= 0) {
-    digitalWrite(pin, RELAY_ACTIVE_LEVEL);
-    _active = _target;
+    case DEADTIME:
+      if (millis() - _deadAt < RELAY_SWITCH_DELAY_MS) return;
+      if (_committed != LEVEL_OFF) {
+        int pin = pinForLevel(_committed);
+        if (pin >= 0) digitalWrite(pin, RELAY_ACTIVE_LEVEL);
+      }
+      _active = _committed;
+      _state = IDLE;
+      break;
+
+    case IDLE:
+    default:
+      break;
   }
-  _waiting = false;
 }

@@ -86,6 +86,8 @@ void setup() {
   String deviceName = settings.getDeviceName();
   String mqttHost   = settings.getMqttHost();
   uint16_t mqttPort = settings.getMqttPort();
+  String mqttUser   = settings.getMqttUser();
+  String mqttPass   = settings.getMqttPassword();
 
   // Button (works even in portal mode so the fan stays locally controllable).
   button.begin(
@@ -104,7 +106,7 @@ void setup() {
 
   // Interfaces.
   homekit.begin(deviceName, &fan, &settings);
-  mqtt.begin(mqttHost, mqttPort, deviceName, &fan);
+  mqtt.begin(mqttHost, mqttPort, mqttUser, mqttPass, deviceName, &fan);
 
   // Wire FanController -> interfaces (notify on every change).
   fan.setHomeKitNotify([](bool power, uint8_t percent) {

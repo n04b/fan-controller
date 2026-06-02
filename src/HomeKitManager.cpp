@@ -53,19 +53,23 @@ static void onPairChange(boolean isPaired) {
   Serial.println(isPaired ? F("HomeKit Paired") : F("HomeKit Reset"));
 }
 
-// Serial command: "@M <host> [port]" -> store MQTT broker in NVS and reboot.
+// Serial command: "@M <host> [port] [user] [pass]" -> store broker & reboot.
 static void cmdSetMqtt(const char* buf) {
   if (!s_settings) return;
-  char host[64] = {0};
+  char host[64] = {0}, user[64] = {0}, pass[64] = {0};
   unsigned int port = DEFAULT_MQTT_PORT;
   // buf starts with the command letter ('M'); parse what follows.
-  if (sscanf(buf + 1, "%63s %u", host, &port) < 1 || host[0] == 0) {
-    Serial.println(F("Usage: @M <broker-ip-or-host> [port]"));
+  int n = sscanf(buf + 1, "%63s %u %63s %63s", host, &port, user, pass);
+  if (n < 1 || host[0] == 0) {
+    Serial.println(F("Usage: @M <broker-ip-or-host> [port] [user] [pass]"));
     return;
   }
   s_settings->setMqttHost(String(host));
   s_settings->setMqttPort((uint16_t)port);
-  Serial.printf("MQTT broker set to %s:%u - rebooting\n", host, port);
+  if (n >= 3) s_settings->setMqttUser(String(user));   // only if supplied
+  if (n >= 4) s_settings->setMqttPassword(String(pass));
+  Serial.printf("MQTT broker set to %s:%u (user '%s') - rebooting\n",
+                host, port, n >= 3 ? user : s_settings->getMqttUser().c_str());
   delay(200);
   ESP.restart();
 }

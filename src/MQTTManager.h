@@ -31,6 +31,7 @@ class FanController;
 class MQTTManager {
 public:
   void begin(const String& host, uint16_t port,
+             const String& user, const String& pass,
              const String& deviceName, FanController* fan);
 
   // Called from the main loop: applies inbound MQTT commands to the fan and
@@ -59,6 +60,8 @@ private:
   FanController* _ctrl = nullptr;
   String         _host;
   uint16_t       _port = DEFAULT_MQTT_PORT;
+  String         _user;
+  String         _pass;
 
   TaskHandle_t      _task = nullptr;
   SemaphoreHandle_t _mux  = nullptr;

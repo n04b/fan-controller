@@ -17,7 +17,12 @@
 #define RELAY_IDLE_LEVEL     HIGH
 
 // Break-before-make delay when switching speed (ms). Non-blocking.
-#define RELAY_SWITCH_DELAY_MS 200
+#define RELAY_SWITCH_DELAY_MS 150
+
+// Debounce: a requested speed must stay stable this long before the relays
+// physically switch. Coalesces bursts (e.g. dragging the HomeKit slider) into
+// a single clean transition and protects the relay contacts from chatter.
+#define RELAY_DEBOUNCE_MS 300
 
 // ----- User button ---------------------------------------------------------
 #define PIN_BUTTON           6    // GPIO6 -> button -> GND, INPUT_PULLUP
